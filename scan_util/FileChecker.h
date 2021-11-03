@@ -1,7 +1,6 @@
 #ifndef FILECHECKER_H
 #define FILECHECKER_H
 
-
 namespace fs = std::filesystem;
 
 class FileChecker
@@ -13,6 +12,8 @@ private:
 	int EXEDetects = 0;
 	int errors = 0;
 
+	std::string currentLine = "";
+
 
 public:
 	enum FILETYPES
@@ -22,7 +23,6 @@ public:
 		EXE,
 		OTHERTYPE
 	};
-
 
 
 	void showResults();

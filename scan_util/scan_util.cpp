@@ -1,7 +1,8 @@
 ﻿#include <filesystem>
 #include <ctime>
-
+#include <typeinfo>
 #include "FileChecker.h"
+#include <iostream>
 
 
 namespace fs = std::filesystem;
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
 {
     FileChecker FlChecker;
 
-    //сканируем папку в поисках нужных файлов
+    //принимаем имя папки через аргументы командной строки
     std::string path = argv[1];
 
     //std::filesystem работает с c++17
@@ -37,6 +38,6 @@ int main(int argc, char *argv[])
     }
 
     FlChecker.showResults();
-    system("pause");
+
     return 0;
 }

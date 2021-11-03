@@ -4,10 +4,12 @@
 #include <fstream>
 #include <ctime>
 #include <string>
+#include <regex>
 #include "fileChecker.h"
 
 namespace fs = std::filesystem;
 
+//вывод результатов
 void FileChecker::showResults()
 {
     std::cout << "\n\n====== Scan result ======\n\n" <<
@@ -22,7 +24,9 @@ void FileChecker::showResults()
         "Errors: " << errors <<
         "\n\n";
         int time = clock();
-        std::cout << std::setfill('0') << std::setw(2) << "Execution time: "  << time / 3600000 << ':' << std::setfill('0') << std::setw(2) << time / 60000 << ':' << std::setfill('0') << std::setw(2) << ceil(static_cast<double>(time) / 1000) <<
+        std::cout << std::setfill('0') << std::setw(2) << "Execution time: "  << time / 3600000 << ':' <<
+            std::setfill('0') << std::setw(2) << time / 60000 << ':' << std::setfill('0') <<
+            std::setw(2) << ceil(static_cast<double>(time) / 1000) <<
         "\n\n" <<
         "========================\n";
 
@@ -32,7 +36,8 @@ void FileChecker::showResults()
  FileChecker::FILETYPES FileChecker::getFileType(fs::path const& path)
 {
     std::string extension = path.extension().string();
-    //понизим строку расширени€ на вс€кий случай
+
+    //понизим регистр расширени€ на вс€кий случай
     std::transform(extension.begin(), extension.end(), extension.begin(),
         [](unsigned char c) { return std::tolower(c); });
 
@@ -50,11 +55,22 @@ void FileChecker::showResults()
 
 
 
+
+ /*
+ * принимаем путь до файла
+ * увеличиваем счетчик файлов
+ * в зависимости от расширени€ файла, ищем регул€ркой нужную подстроку
+ * если нашли - закрываем файл, увеличиваем счетчик и выходим из цикла
+ * в случае exe/dll делаем это только когда нашли обе "плохие" строки
+ */
+
 void FileChecker::checkFile(fs::path const& path)
 {
     ++processedFiles;
+
     switch (this->getFileType(path))
     {
+
     case JS:
     {
         std::ifstream in(path);
@@ -62,16 +78,18 @@ void FileChecker::checkFile(fs::path const& path)
             errors++;
         while (in)
         {
-            std::string strInput;
-            std::getline(in, strInput);
-            if (strInput == "<script>evil_script()</script>")
+            std::getline(in, currentLine);
+            std::regex badLine(".*(<script>evil_script\\(\\)<\\/script>).*");
+            if (std::regex_match(currentLine, badLine))
             {
                 ++JSDetects;
                 in.close();
+                break;
             }
         }
         break;
     }
+
     case CMD:
     {
         std::ifstream in(path);
@@ -79,16 +97,18 @@ void FileChecker::checkFile(fs::path const& path)
             errors++;
         while (in)
         {
-            std::string strInput;
-            std::getline(in, strInput);
-            if (strInput == "rd /s /q \"c:\\windows\"")
+            std::getline(in, currentLine);
+            std::regex badLine(R".*(rd \/s \/q \"c:\\windows\").*");
+            if (std::regex_match(currentLine, badLine))
             {
                 ++CMDDetects;
                 in.close();
+                break;
             }
         }
         break;
     }
+
     case EXE:
     {
         std::ifstream in(path);
@@ -97,23 +117,26 @@ void FileChecker::checkFile(fs::path const& path)
             errors++;
         while (in)
         {
-            std::string strInput;
-            std::getline(in, strInput);
-            if (strInput == "CreateRemoteThread")
+            std::getline(in, currentLine);
+            std::regex badLine1(".*CreateRemoteThread.*");
+            std::regex badLine2(".*CreateProcess.*");
+            if (std::regex_match(currentLine, badLine1))
             {
                 if (hasOneBadString)
                 {
                     ++EXEDetects;
                     in.close();
+                    break;
                 }
                 hasOneBadString = true;
             }
-            if (strInput == "CreateProcess")
+            if (std::regex_match(currentLine, badLine2))
             {
                 if (hasOneBadString)
                 {
                     ++EXEDetects;
                     in.close();
+                    break;
                 }
                 hasOneBadString = true;
             }
